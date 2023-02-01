@@ -2,8 +2,8 @@ package main
 
 import (
 	"encoding/json"
-	"io/ioutil"
 	"net/http"
+	"os"
 	"time"
 
 	"github.com/gin-gonic/gin"
@@ -22,7 +22,7 @@ var recipes []Recipe
 
 func init() {
 	recipes = make([]Recipe, 0)
-	file, _ := ioutil.ReadFile("recipes.json")
+	file, _ := os.ReadFile("recipes.json")
 	_ = json.Unmarshal([]byte(file), &recipes)
 }
 
