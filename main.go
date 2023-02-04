@@ -153,6 +153,22 @@ func DeleteRecipeHandler(c *gin.Context) {
 		"message": "Recipe has been deleted"})
 }
 
+// swagger:operation GET /recipes/search recipes findRecipe
+// Search recipes based on tags
+// ---
+// produces:
+// - application/json
+// parameters:
+//   - name: tag
+//     in: query
+//     description: recipe tag
+//     required: true
+//     type: string
+//
+// responses:
+//
+//	'200':
+//	    description: Successful operation
 func SearchRecipesHandler(c *gin.Context) {
 	tag := c.Query("tag")
 	listOfrecipes := make([]Recipe, 0)
