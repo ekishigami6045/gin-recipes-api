@@ -1,3 +1,20 @@
+// Recipes API
+//
+// This is a sample recipes API. You can find out more about the API at https://github.com/ekishigami6045/gin-recipes-api.
+//
+//		Schemes: http
+//	 Host: localhost:8080
+//		BasePath: /
+//		Version: 1.0.0
+//		Contact: Mohamed Labouardy <e.kishigami@esese.fun> https://esese.fun
+//
+//		Consumes:
+//		- application/json
+//
+//		Produces:
+//		- application/json
+//
+// swagger:meta
 package main
 
 import (
@@ -11,6 +28,7 @@ import (
 	"github.com/rs/xid"
 )
 
+// swagger:parameters recipes newRecipe
 type Recipe struct {
 	ID          string    `json:"id"`
 	Name        string    `json:"name"`
@@ -27,6 +45,17 @@ func init() {
 	_ = json.Unmarshal([]byte(file), &recipes)
 }
 
+// swagger:operation POST /recipes recipes newRecipe
+// Create a new recipe
+// ---
+// produces:
+// - application/json
+// responses:
+//
+//	'200':
+//	    description: Successful operation
+//	'400':
+//	    description: Invalid input
 func NewRecipeHandler(c *gin.Context) {
 	var recipe Recipe
 	if err := c.ShouldBindJSON(&recipe); err != nil {
@@ -41,10 +70,27 @@ func NewRecipeHandler(c *gin.Context) {
 	c.JSON(http.StatusOK, recipe)
 }
 
+// swagger:operation GET /recipes recipes listrecipes
+// Returns list of recipes
+// ---
+// produces:
+// - application/json
 func ListRecipesHandler(c *gin.Context) {
 	c.JSON(http.StatusOK, recipes)
 }
 
+// swagger:operation PUT /recipes/{id} recipes updateRecipe
+// Update an existing recipe
+// ---
+// parameters:
+//   - name: id
+//     in: path
+//     description: ID of the recipe
+//     required: true
+//     type: string
+//
+// produces:
+// - application/json
 func UpdateRecipeHandler(c *gin.Context) {
 	id := c.Param("id")
 	var recipe Recipe
@@ -70,6 +116,24 @@ func UpdateRecipeHandler(c *gin.Context) {
 	c.JSON(http.StatusOK, recipe)
 }
 
+// swagger:operation DELETE /recipes/{id} recipes deleteRecipe
+// Delete an existing recipe
+// ---
+// produces:
+// - application/json
+// parameters:
+//   - name: id
+//     in: path
+//     description: ID of the recipe
+//     required: true
+//     type: string
+//
+// responses:
+//
+//	'200':
+//	    description: Successful operation
+//	'404':
+//	    description: Invalid recipe ID
 func DeleteRecipeHandler(c *gin.Context) {
 	id := c.Param("id")
 	index := -1
