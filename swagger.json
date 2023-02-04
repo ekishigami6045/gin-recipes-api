@@ -83,6 +83,27 @@
         ]
       }
     },
+    "/recipes/search": {
+      "get": {
+        "description": "Search recipes based on tags",
+        "produces": [
+          "application/json"
+        ],
+        "tags": [
+          "recipes"
+        ],
+        "operationId": "findRecipe",
+        "parameters": [
+          {
+            "type": "string",
+            "description": "recipe tag",
+            "name": "tag",
+            "in": "query",
+            "required": true
+          }
+        ]
+      }
+    },
     "/recipes/{id}": {
       "put": {
         "description": "Update an existing recipe",
@@ -93,6 +114,25 @@
           "recipes"
         ],
         "operationId": "updateRecipe",
+        "parameters": [
+          {
+            "type": "string",
+            "description": "ID of the recipe",
+            "name": "id",
+            "in": "path",
+            "required": true
+          }
+        ]
+      },
+      "delete": {
+        "description": "Delete an existing recipe",
+        "produces": [
+          "application/json"
+        ],
+        "tags": [
+          "recipes"
+        ],
+        "operationId": "deleteRecipe",
         "parameters": [
           {
             "type": "string",
