@@ -21,14 +21,17 @@ import (
 	"context"
 	"fmt"
 	"log"
-	"net/http"
 	"os"
 	"time"
 
 	handlers "gin-recipes-api/handlers"
 
+	"github.com/gin-contrib/sessions"
+
+	redisStore "github.com/gin-contrib/sessions/redis"
+
 	"github.com/gin-gonic/gin"
-	"go.mongodb.org/mongo-driver/bson"
+	"github.com/redis/go-redis/v9"
 	"go.mongodb.org/mongo-driver/bson/primitive"
 	"go.mongodb.org/mongo-driver/mongo"
 	"go.mongodb.org/mongo-driver/mongo/options"
@@ -51,9 +54,11 @@ var err error
 var client *mongo.Client
 var collection *mongo.Collection
 var recipesHandler *handlers.RecipesHandler
+var authHandler *handlers.AuthHandler
 
 func init() {
 	ctx = context.Background()
+	// mongoDB
 	client, err = mongo.Connect(ctx,
 		options.Client().ApplyURI(os.Getenv("MONGO_URI")))
 	if err = client.Ping(context.TODO(), readpref.Primary()); err != nil {
@@ -61,76 +66,38 @@ func init() {
 	}
 	log.Println("Connected to MongoDB")
 	collection = client.Database(os.Getenv("MONGO_DATABASE")).Collection("recipes")
-	recipesHandler = handlers.NewRecipesHandler(ctx, collection)
-}
-
-// swagger:operation DELETE /recipes/{id} recipes deleteRecipe
-// Delete an existing recipe
-// ---
-// produces:
-// - application/json
-// parameters:
-//   - name: id
-//     in: path
-//     description: ID of the recipe
-//     required: true
-//     type: string
-//
-// responses:
-//
-//	'200':
-//	    description: Successful operation
-//	'404':
-//	    description: Invalid recipe ID
-func DeleteRecipeHandler(c *gin.Context) {
-	id := c.Param("id")
-	objectId, _ := primitive.ObjectIDFromHex(id)
-	_, err = collection.DeleteOne(ctx, bson.M{
-		"_id": objectId,
+	// Redis
+	redisClient := redis.NewClient(&redis.Options{
+		Addr:     "localhost:6379",
+		Password: "",
+		DB:       0,
 	})
-	if err != nil {
-		fmt.Println(err)
-		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
-		return
-	}
-	c.JSON(http.StatusOK, gin.H{"message": "Recipe has been deleted"})
-}
-
-// swagger:operation GET /recipes/search recipes findRecipe
-// Search recipes based on tags
-// ---
-// produces:
-// - application/json
-// parameters:
-//   - name: tag
-//     in: query
-//     description: recipe tag
-//     required: true
-//     type: string
-//
-// responses:
-//
-//	'200':
-//	    description: Successful operation
-func SearchRecipesHandler(c *gin.Context) {
-	id := c.Query("id")
-	objectId, _ := primitive.ObjectIDFromHex(id)
-	cur := collection.FindOne(ctx, bson.M{
-		"_id": objectId,
-	})
-	var recipe Recipe
-	err := cur.Decode(&recipe)
-	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
-		return
-	}
-	c.JSON(http.StatusOK, recipe)
+	status := redisClient.Ping(ctx)
+	fmt.Println(status)
+	// Create a RecipeHandler instance
+	recipesHandler = handlers.NewRecipesHandler(ctx, collection, redisClient)
+	// Create a AuthHandler instance
+	collectionUsers := client.Database(os.Getenv("MONGO_DATABASE")).Collection("users")
+	authHandler = handlers.NewAuthHandler(ctx, collectionUsers)
 }
 
 func main() {
 	router := gin.Default()
-	router.POST("/recipes", recipesHandler.NewRecipeHandler)
-	router.GET("/recipes", recipesHandler.ListRecipesHandler)
-	router.PUT("/recipes/:id", recipesHandler.UpdateRecipeHandler)
+
+	store, _ := redisStore.NewStore(10, "tcp", "localhost:6379", "", []byte("secret"))
+	router.Use(sessions.Sessions("recipes_api", store))
+
+	router.GET("/recipes/:id", recipesHandler.GetOneRecipeHandler)
+	router.POST("/signin", authHandler.SignInHandler)
+	router.POST("/signout", authHandler.SignOutHandler)
+	router.POST("/refresh", authHandler.RefreshHandler)
+	authorized := router.Group("/")
+	authorized.Use(authHandler.AuthMiddleware())
+	{
+		authorized.POST("/recipes", recipesHandler.NewRecipeHandler)
+		authorized.GET("/recipes", recipesHandler.ListRecipesHandler)
+		authorized.PUT("/recipes/:id", recipesHandler.UpdateRecipeHandler)
+		authorized.DELETE("/recipes/:id", recipesHandler.DeleteRecipeHandler)
+	}
 	router.Run()
 }
